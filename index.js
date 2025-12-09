@@ -14,6 +14,15 @@ const endpoints = {
   tot: 'https://sg-public-api.hoyolab.com/event/luna/os/sign?act_id=e202202281857121',
 }
 
+// 遊戲中文名
+const gameNames = {
+  zzz: 'ZZZ',
+  gi: '原神',
+  hsr: '崩鐵',
+  hi3: '崩壞3rd',
+  tot: '未定事件簿'
+}
+
 let hasErrors = false
 let latestGames = []
 
@@ -28,14 +37,13 @@ async function run(cookie, games) {
   for (let game of games) {
     game = game.toLowerCase()
 
-    log('debug', `\n----- CHECKING IN FOR ${game} -----`)
+    log('info', `正在簽到：${gameNames[game] || game}`)
 
     if (!(game in endpoints)) {
-      log('error', `Game ${game} is invalid. Available games are: zzz, gi, hsr, hi3, and tot`)
+      log('error', `遊戲 ${game} 無效，可用遊戲: zzz, gi, hsr, hi3, tot`)
       continue
     }
 
-    // begin check in
     const endpoint = endpoints[game]
     const url = new URL(endpoint)
     const actId = url.searchParams.get('act_id')
@@ -47,19 +55,15 @@ async function run(cookie, games) {
       act_id: actId
     })
 
-    // headers from valid browser request
     const headers = new Headers()
-
     headers.set('accept', 'application/json, text/plain, */*')
     headers.set('accept-encoding', 'gzip, deflate, br, zstd')
     headers.set('accept-language', 'en-US,en;q=0.6')
     headers.set('connection', 'keep-alive')
-
     headers.set('origin', 'https://act.hoyolab.com')
     headers.set('referrer', 'https://act.hoyolab.com')
     headers.set('content-type', 'application.json;charset=UTF-8')
     headers.set('cookie', cookie)
-
     headers.set('sec-ch-ua', '"Not/A)Brand";v="8", "Chromium";v="126", "Brave";v="126"')
     headers.set('sec-ch-ua-mobile', '?0')
     headers.set('sec-ch-ua-platform', '"Linux"')
@@ -67,116 +71,80 @@ async function run(cookie, games) {
     headers.set('sec-fech-mode', 'cors')
     headers.set('sec-fetch-site', 'same-site')
     headers.set('sec-gpc', '1')
-
     headers.set("x-rpc-signgame", game)
-
     headers.set('user-agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
 
     const res = await fetch(url, { method: 'POST', headers, body })
     const json = await res.json()
     const code = String(json.retcode)
+
     const successCodes = {
-      '0': 'Successfully checked in!',
-      '-5003': 'Already checked in for today',
+      '0': '成功簽到！',
+      '-5003': '已簽到！'
     }
 
-    // success responses
     if (code in successCodes) {
-      log('info', game, `${successCodes[code]}`)
+      log('info', `${gameNames[game]}：${successCodes[code]}`)
       continue
     }
 
-    // error responses
     const errorCodes = {
-      '-100': 'Error not logged in. Your cookie is invalid, try setting up again',
-      '-10002': 'Error not found. You haven\'t played this game'
+      '-100': '錯誤：未登入，Cookie 無效',
+      '-10002': '尚未遊玩此遊戲'
     }
-
-    log('debug', game, `Headers`, Object.fromEntries(res.headers))
-    log('debug', game, `Response`, json)
 
     if (code in errorCodes) {
-      log('error', game, `${errorCodes[code]}`)
+      log('error', `${gameNames[game]}：${errorCodes[code]}`)
       continue
     }
 
-    log('error', game, `Error undocumented, report to Issues page if this persists`)
+    log('error', `${gameNames[game]}：未知錯誤，請回報 Issues`)
   }
 }
 
-// custom log function to store messages
 function log(type, ...data) {
-
-  // log to real console
   console[type](...data)
 
-  // ignore debug and toggle hasErrors
-  switch (type) {
-    case 'debug': return
-    case 'error': hasErrors = true
-  }
+  if (type === 'error') hasErrors = true
+  if (type === 'debug') return
 
-  // check if it's a game specific message, and set it as uppercase for clarity, and add delimiter
-  if(data[0] in endpoints) {
-    data[0] = data[0].toUpperCase() + msgDelimiter
-  }
-
-  // serialize data and add to messages
   const string = data
-    .map(value => {
-      if (typeof value === 'object') {
-        return JSON.stringify(value, null, 2).replace(/^"|"$/, '')
-      }
-
-      return value
-    })
+    .map(v => (typeof v === 'object' ? JSON.stringify(v, null, 2) : v))
     .join(' ')
 
   messages.push({ type, string })
 }
 
-// must be function to return early
 async function discordWebhookSend() {
-  log('debug', '\n----- DISCORD WEBHOOK -----')
-
   if (!discordWebhook.toLowerCase().trim().startsWith('https://discord.com/api/webhooks/')) {
-    log('error', 'DISCORD_WEBHOOK is not a Discord webhook URL. Must start with `https://discord.com/api/webhooks/`')
+    log('error', 'DISCORD_WEBHOOK 錯誤，必須從 https://discord.com/api/webhooks/ 開頭')
     return
   }
+
   let discordMsg = ""
   if (discordUser) {
-      discordMsg = `<@${discordUser}>\n`
+    discordMsg = `<@${discordUser}>\n`
   }
-  discordMsg += messages.map(msg => `(${msg.type.toUpperCase()}) ${msg.string}`).join('\n')
+
+  // 不再加入 (INFO) 前綴
+  discordMsg += messages.map(msg => msg.string).join('\n')
 
   const res = await fetch(discordWebhook, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      content: discordMsg
-    })
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ content: discordMsg })
   })
 
-  if (res.status === 204) {
-    log('info', 'Successfully sent message to Discord webhook!')
-    return
+  if (res.status !== 204) {
+    log('error', 'Discord webhook 發送失敗，請檢查設定')
   }
-
-  log('error', 'Error sending message to Discord webhook, please check URL and permissions')
 }
 
-if (!cookies || !cookies.length) {
-  throw new Error('COOKIE environment variable not set!')
-}
-
-if (!games || !games.length) {
-  throw new Error('GAMES environment variable not set!')
-}
+if (!cookies || !cookies.length) throw new Error('COOKIE 未設定!')
+if (!games || !games.length) throw new Error('GAMES 未設定!')
 
 for (const index in cookies) {
-  log('info', `-- CHECKING IN FOR ACCOUNT ${Number(index) + 1} --`)
+  log('info', `## 正在替帳號 ${Number(index) + 1} 登入`)
   await run(cookies[index], games[index])
 }
 
@@ -186,5 +154,5 @@ if (discordWebhook && URL.canParse(discordWebhook)) {
 
 if (hasErrors) {
   console.log('')
-  throw new Error('Error(s) occured.')
+  throw new Error('有錯誤發生。')
 }
