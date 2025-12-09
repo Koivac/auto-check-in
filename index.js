@@ -4,8 +4,8 @@ const cookies = process.env.COOKIE.split('\n').map(s => s.trim())
 const games = process.env.GAMES.split('\n').map(s => s.trim())
 const discordWebhook = process.env.DISCORD_WEBHOOK
 const discordUser = process.env.DISCORD_USER
-const msgDelimiter = ':'
 const messages = []
+
 const endpoints = {
   zzz: 'https://sg-act-nap-api.hoyolab.com/event/luna/zzz/os/sign?act_id=e202406031448091',
   gi:  'https://sg-hk4e-api.hoyolab.com/event/sol/sign?act_id=e202102251931481',
@@ -14,7 +14,7 @@ const endpoints = {
   tot: 'https://sg-public-api.hoyolab.com/event/luna/os/sign?act_id=e202202281857121',
 }
 
-// 遊戲中文名
+// 中文遊戲名
 const gameNames = {
   zzz: 'ZZZ',
   gi: '原神',
@@ -37,8 +37,6 @@ async function run(cookie, games) {
   for (let game of games) {
     game = game.toLowerCase()
 
-    log('info', `正在簽到：${gameNames[game] || game}`)
-
     if (!(game in endpoints)) {
       log('error', `遊戲 ${game} 無效，可用遊戲: zzz, gi, hsr, hi3, tot`)
       continue
@@ -47,7 +45,6 @@ async function run(cookie, games) {
     const endpoint = endpoints[game]
     const url = new URL(endpoint)
     const actId = url.searchParams.get('act_id')
-
     url.searchParams.set('lang', 'en-us')
 
     const body = JSON.stringify({
@@ -68,7 +65,7 @@ async function run(cookie, games) {
     headers.set('sec-ch-ua-mobile', '?0')
     headers.set('sec-ch-ua-platform', '"Linux"')
     headers.set('sec-fetch-dest', 'empty')
-    headers.set('sec-fech-mode', 'cors')
+    headers.set('sec-fetch-mode', 'cors')
     headers.set('sec-fetch-site', 'same-site')
     headers.set('sec-gpc', '1')
     headers.set("x-rpc-signgame", game)
@@ -89,7 +86,7 @@ async function run(cookie, games) {
     }
 
     const errorCodes = {
-      '-100': '錯誤：未登入，Cookie 無效',
+      '-100': '錯誤：未登入（Cookie 無效）',
       '-10002': '尚未遊玩此遊戲'
     }
 
@@ -104,7 +101,6 @@ async function run(cookie, games) {
 
 function log(type, ...data) {
   console[type](...data)
-
   if (type === 'error') hasErrors = true
   if (type === 'debug') return
 
@@ -116,18 +112,12 @@ function log(type, ...data) {
 }
 
 async function discordWebhookSend() {
-  if (!discordWebhook.toLowerCase().trim().startsWith('https://discord.com/api/webhooks/')) {
-    log('error', 'DISCORD_WEBHOOK 錯誤，必須從 https://discord.com/api/webhooks/ 開頭')
-    return
-  }
-
   let discordMsg = ""
-  if (discordUser) {
-    discordMsg = `<@${discordUser}>\n`
-  }
 
-  // 不再加入 (INFO) 前綴
-  discordMsg += messages.map(msg => msg.string).join('\n')
+  if (discordUser) discordMsg = `<@${discordUser}>\n`
+
+  // 去掉 (INFO)/(ERROR)
+  discordMsg += messages.map(m => m.string).join('\n')
 
   const res = await fetch(discordWebhook, {
     method: 'POST',
@@ -136,15 +126,17 @@ async function discordWebhookSend() {
   })
 
   if (res.status !== 204) {
-    log('error', 'Discord webhook 發送失敗，請檢查設定')
+    log('error', 'Discord webhook 發送失敗')
   }
 }
 
+// ========== 主流程 ==========
 if (!cookies || !cookies.length) throw new Error('COOKIE 未設定!')
 if (!games || !games.length) throw new Error('GAMES 未設定!')
 
 for (const index in cookies) {
-  log('info', `## 正在替帳號 ${Number(index) + 1} 登入`)
+  const name = Number(index) === 0 ? '魚' : Number(index) + 1
+  log('info', `## 正在替${name}登入`)
   await run(cookies[index], games[index])
 }
 
@@ -152,7 +144,4 @@ if (discordWebhook && URL.canParse(discordWebhook)) {
   await discordWebhookSend()
 }
 
-if (hasErrors) {
-  console.log('')
-  throw new Error('有錯誤發生。')
-}
+if (hasErrors) throw new Error('有錯誤!!!11!')
