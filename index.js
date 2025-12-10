@@ -16,11 +16,11 @@ const endpoints = {
 
 // 中文遊戲名
 const gameNames = {
-  zzz: 'ZZZ',
-  gi: '原神',
-  hsr: '崩鐵',
-  hi3: '崩壞3rd',
-  tot: '未定事件簿'
+  zzz: '**ZZZ**',
+  gi: '**原神**',
+  hsr: '**崩鐵**',
+  hi3: '**崩壞 3rd**',
+  tot: '**未定事件簿**'
 }
 
 let hasErrors = false
@@ -77,7 +77,7 @@ async function run(cookie, games) {
 
     const successCodes = {
       '0': '成功簽到！',
-      '-5003': '已簽到！'
+      '-5003': '今日已簽到過！'
     }
 
     if (code in successCodes) {
@@ -86,7 +86,7 @@ async function run(cookie, games) {
     }
 
     const errorCodes = {
-      '-100': '錯誤：未登入（Cookie 無效）',
+      '-100': '錯誤：未登入（Cookie 無效）用無痕的那個方法！',
       '-10002': '尚未遊玩此遊戲'
     }
 
@@ -114,7 +114,7 @@ function log(type, ...data) {
 async function discordWebhookSend() {
   let discordMsg = ""
 
-  if (discordUser) discordMsg = `<@${discordUser}>\n`
+  if (discordUser) discordMsg = `Oi！<@${discordUser}>\n！`
 
   // 去掉 (INFO)/(ERROR)
   discordMsg += messages.map(m => m.string).join('\n')
@@ -126,9 +126,9 @@ async function discordWebhookSend() {
   })
 
   if (res.status !== 204) {
-    log('error', 'Discord webhook 發送失敗')
+    log('error', '## _Discord webhook 發送失敗 :(_')
   }
-}
+
 
 // ========== 主流程 ==========
 if (!cookies || !cookies.length) throw new Error('COOKIE 未設定!')
