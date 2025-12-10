@@ -167,7 +167,7 @@ async function discordWebhookSend() {
   
   // Prepare the payload
   const payload = {
-    content: discordUser ? `<@${discordUser}>`,
+    content: discordUser ? `<@${discordUser}>` : '',
     embeds: embeds
   }
   
