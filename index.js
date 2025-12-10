@@ -112,17 +112,58 @@ function log(type, ...data) {
 }
 
 async function discordWebhookSend() {
-  let discordMsg = ""
+  let accountEmbeds = []
 
-  if (discordUser) discordMsg = `Oi！<@${discordUser}>！\n`
+  let currentAccount = null
+  let currentMessages = []
 
-  // 去掉 (INFO)/(ERROR)
-  discordMsg += messages.map(m => m.string).join('\n')
+  for (const msg of messages) {
+    if (msg.string.startsWith('##')) {
+      if (currentAccount) {
+        accountEmbeds.push({
+          name: currentAccount,
+          logs: [...currentMessages]
+        })
+        currentMessages = []
+      }
+
+      const match = msg.string.match(/正在替(.+)登入/)
+      currentAccount = match ? match[1] : '未知帳號'
+      continue
+    }
+
+    currentMessages.push(msg.string)
+  }
+
+  if (currentAccount) {
+    accountEmbeds.push({ name: currentAccount, logs: [...currentMessages] })
+  }
+
+  const embedList = []
+
+  for (const acc of accountEmbeds) {
+    let color = 0x00FF00 // default green
+
+    // 魚色
+    if (acc.name === '魚') color = 0xA627E4
+
+    embedList.push({
+      title: `${acc.name} — Hoyolab 每日簽到`,
+      description: acc.logs.join('\n'),
+      color: color
+    })
+  }
+
+  // @user改在最底部
+  const payload = {
+    embeds: embedList,
+    content: discordUser ? `\n<@${discordUser}>` : null
+  }
 
   const res = await fetch(discordWebhook, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ content: discordMsg })
+    body: JSON.stringify(payload)
   })
 
   if (res.status !== 204) {
@@ -136,7 +177,8 @@ if (!games || !games.length) throw new Error('GAMES 未設定!')
 
 for (const index in cookies) {
   const name = Number(index) === 0 ? '魚' : Number(index) + 1
-  log('info', `## 正在替${name}登入`)
+  log('info', `##   正在替${name}登入`)
+  log('info', ==========================`)
   await run(cookies[index], games[index])
 }
 
