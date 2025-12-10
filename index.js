@@ -114,7 +114,7 @@ function log(type, ...data) {
 async function discordWebhookSend() {
   let discordMsg = ""
 
-  if (discordUser) discordMsg = `Oi！<@${discordUser}>\n！`
+  if (discordUser) discordMsg = `Oi！<@${discordUser}>！\n`
 
   // 去掉 (INFO)/(ERROR)
   discordMsg += messages.map(m => m.string).join('\n')
