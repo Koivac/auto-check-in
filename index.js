@@ -30,8 +30,8 @@ const accountNames = {
 }
 
 const accountColors = {
-  0: 9537247, // Green for 魚
-  1: 0x4BD1FF  // Blue for 宇
+  0: 7233522,
+  1: 0x4BD1FF
 }
 
 let hasErrors = false
