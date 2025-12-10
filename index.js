@@ -158,7 +158,6 @@ async function discordWebhookSend() {
         title: `${accountName}`,
         color: accountColor,
         description: description,
-        timestamp: new Date().toISOString(),
       }
       
       embeds.push(embed)
@@ -199,7 +198,6 @@ for (const index in cookies) {
   
   // Get account name - use custom name if exists, otherwise use default 帳號X
   const name = accountNames[index] || `帳號${Number(index) + 1}`
-  log('info', `正在替${name}登入`, Number(index))
   await run(cookies[index], games[index], Number(index))
 }
 
