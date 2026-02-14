@@ -23,7 +23,7 @@ const gameNames = {
   tot: '**未定事件簿**'
 }
 
-// Account names with special styling
+// Account names
 const accountNames = {
   0: '魚',
   1: '嘟嘟噠'
@@ -165,10 +165,10 @@ async function discordWebhookSend() {
   }
   
   // Prepare the payload
-  const payload = {
+ ` const payload = {
     content: discordUser ? `<@${discordUser}>` : '',
     embeds: embeds
-  }
+  } `
   
   console.log('Sending Discord webhook with embeds:', embeds.length, 'embeds')
   
